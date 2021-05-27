@@ -1,4 +1,0 @@
-light or dark
-round or square
-tall or short
-solid or hollow
