@@ -1,0 +1,13 @@
+website:
+find out how github pages works
+learn basics of html
+learn basics of css
+learn basics of javascript
+create reduimentary design
+
+
+quatro:
+write logic for comparing equivalent postions
+rotations
+attribute swaps
+write logic for generation new postions and minimax
