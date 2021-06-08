@@ -1,5 +1,8 @@
 #!/usr/bin/python3.7
 
+# for encoding games as base64 strings
+import base64
+
 # contains the logic for the game of quatro
 class Board:
     
@@ -8,11 +11,29 @@ class Board:
         # array representing the 16 tiles
         self.board=[None]*16
         # all possible ways to have pieces in a row
-        self.paths=[[0,1,2,3],[4,5,6,7],[8,9,10,11],[12,13,14,15],[0,4,8,12],[1,5,9,13],[2,6,10,14],[3,7,11,15],[0,5,10,15],[3,6,9,12]]
+        self.paths=[[0,1,2,3],[4,5,6,7],[8,9,10,11],[12,13,14,15],[0,4,8,12],
+                [1,5,9,13],[2,6,10,14],[3,7,11,15],[0,5,10,15],[3,6,9,12]]
         # maps tuple of atrribute, value to pretty representation
-        self.attribute_map = {(1,0):"hollow",(1,1):"solid",(2,0):"short",(2,1):"tall",(4,0):"square",(4,1):"round",(8,0):"dark",(8,1):"light"}
+        self.attribute_map = {(1,0):"hollow",(1,1):"solid",(2,0):"short",(2,1):"tall",
+                (4,0):"square",(4,1):"round",(8,0):"dark",(8,1):"light"}
         # maps integer representation of piece to pretty representaion
-        self.pretty_map = {None:"  ",0:" 0",1:" 1",2:" 2",3:" 3",4:" 4",5:" 5",6:" 6",7:" 7",8:" 8",9:" 9",10:"10",11:"11",12:"12",13:"13",14:"14",15:"15"}
+        self.pretty_map = {None:"  ",0:" 0",1:" 1",2:" 2",3:" 3",4:" 4",5:" 5",6:" 6",7:" 7",
+                8:" 8",9:" 9",10:"10",11:"11",12:"12",13:"13",14:"14",15:"15"}
+        # all possible unique board permutations
+        self.board_permutations=[
+                {0:0,1:1,2:2,3:3,4:4,5:5,6:6,7:7,8:8,9:9,10:10,11:11,12:12,13:13,14:14,15:15},
+                {0:12,1:8,2:4,3:0,4:13,5:9,6:5,7:1,8:14,9:10,10:6,11:2,12:15,13:11,14:7,15:3},
+                {0:15,1:14,2:13,3:12,4:11,5:10,6:9,7:8,8:7,9:6,10:5,11:4,12:3,13:2,14:1,15:0},
+                {0:3,1:7,2:11,3:15,4:2,5:6,6:10,7:14,8:1,9:5,10:9,11:13,12:0,13:4,14:8,15:12},
+                {0:12,1:13,2:14,3:15,4:8,5:9,6:10,7:11,8:4,9:5,10:6,11:7,12:0,13:1,14:2,15:3},
+                {0:3,1:2,2:1,3:0,4:7,5:6,6:5,7:4,8:11,9:10,10:9,11:8,12:15,13:14,14:13,15:12},
+                {0:15,1:11,2:7,3:3,4:14,5:10,6:6,7:2,8:13,9:9,10:5,11:1,12:12,13:8,14:4,15:0},
+                {0:0,1:4,2:8,3:12,4:1,5:5,6:9,7:13,8:2,9:6,10:10,11:14,12:3,13:7,14:11,15:15}]
+        # all possible unique attribute possitions
+        self.attribute_permutations=[
+            (0,1,2,3),(0,1,3,2),(0,2,1,3),(0,2,3,1),(0,3,1,2),(0,3,2,1),(1,0,2,3),(1,0,3,2),
+            (1,2,0,3),(1,2,3,0),(1,3,0,2),(1,3,2,0),(2,0,1,3),(2,0,3,1),(2,1,0,3),(2,1,3,0),
+            (2,3,0,1),(2,3,1,0),(3,0,1,2),(3,0,2,1),(3,1,0,2),(3,1,2,0),(3,2,0,1),(3,2,1,0)]
         
 
     # place a piece, throws exception if invalid
@@ -108,12 +129,14 @@ class Game:
                     while(not self.board.check_piece(piece)):
                         piece=int(input("illegal selction\nselect piece:\t"))
                     self.selection=piece
+                    self.append_notation(piece)
     
     def select_square(self):
                     square=int(input("select square:\t"))
                     while(not self.board.check_square(square)):
                         square=int(input("illegal selction\nselect square:\t"))
                     self.board.place(self.selection, square)
+                    self.append_notation(square)
 
     def play(self):
         self.board.print()
@@ -150,68 +173,109 @@ class Game:
                     self.select=not self.select
 
 
-#game = Game()
-#game.play()
+    def turn(self):
+        #self.board.print()
+        if(self.white):
+            if(self.select):
+                self.board.print()
+                self.select_piece()
+                self.select=not self.select
+                self.white=not self.white
+            else:
+                # white place piece
+                self.select_square()
+                #self.board.print()
+                if(self.board.check()):
+                    self.board.print()
+                    print("win for white")
+                self.select=not self.select
+        else:
+            print("black has the move")
+            if(self.select):
+                # black select piece
+                self.board.print()
+                self.select_piece()
+                self.select=not self.select
+                self.white=not self.white
+            else:
+                # black place piece
+                self.select_square()
+                self.board.print()
+                if(self.board.check()):
+                    self.board.print()
+                    print("win for black")
+                self.select=not self.select
 
+    def append_notation(self, x):
+        self.note = self.note + "{:x}".format(x)
 
-a={0:0,1:1,2:2,3:3,4:4,5:5,6:6,7:7,8:8,9:9,10:10,11:11,12:12,13:13,14:14,15:15}
-b={0:12,1:8,2:4,3:0,4:13,5:9,6:5,7:1,8:14,9:10,10:6,11:2,12:15,13:11,14:7,15:3}
-c={0:15,1:14,2:13,3:12,4:11,5:10,6:9,7:8,8:7,9:6,10:5,11:4,12:3,13:2,14:1,15:0}
-d={0:3,1:7,2:11,3:15,4:2,5:6,6:10,7:14,8:1,9:5,10:9,11:13,12:0,13:4,14:8,15:12}
+def filename_encode(x):
+    flag=False
+    if(len(x)%2==1):
+        flag=True
+    if(flag):
+        x = "0" + x
+    _bytes = bytes.fromhex(x)
+    urlbytes = base64.urlsafe_b64encode(_bytes)
+    urlstring = str(urlbytes, "utf-8")
+    return urlstring
 
-e={0:0,1:1,2:2,3:3,4:4,5:5,6:6,7:7,8:8,9:9,10:10,11:11,12:12,13:13,14:14,15:15}
-f={0:12,1:13,2:14,3:15,4:8,5:9,6:10,7:11,8:4,9:5,10:6,11:7,12:0,13:1,14:2,15:3}
+def filename_decode(x):
+    urlbytes = bytes(x, "utf-8")
+    _bytes = base64.urlsafe_b64decode(urlbytes)
+    hexstring = _bytes.hex()
+    return hexstring
 
-g={0:0,1:1,2:2,3:3,4:4,5:5,6:6,7:7,8:8,9:9,10:10,11:11,12:12,13:13,14:14,15:15}
-h={0:3,1:2,2:1,3:0,4:7,5:6,6:5,7:4,8:11,9:10,10:9,11:8,12:15,13:14,14:13,15:12}
-
-# sanity check for a-h
-for x in [a,b,c,d,e,f,g,h]:
-    for i in range(0,16):
-        if(i not in x):
-            print("error")
-        flag = True
-        for ii in range(0,16):
-            if(x[ii]==i):
-                flag = False
-        if(flag):
-            print("error")
-
-result = list()
-
-
-#determine all unique board permutations
-for x in [a,b,c,d,e,f,g,h]:
-    if(x not in result):
-        result.append(x)
-for a in [a,b,c,d]:
-    for b in [e,f]:
-        for c in [g,h]:
-            x = dict()
-            for i in range(0,16):
-                x[i]=c[b[a[i]]]
-            #print(x)
-            if(x not in result):
-                result.append(x)
-for x in result:
-    print(x)
-
-
-{0:0,1:1,2:2,3:3,4:4,5:5,6:6,7:7,8:8,9:9,10:10,11:11,12:12,13:13,14:14,15:15}
-{0:12,1:8,2:4,3:0,4:13,5:9,6:5,7:1,8:14,9:10,10:6,11:2,12:15,13:11,14:7,15:3}
-{0:15,1:14,2:13,3:12,4:11,5:10,6:9,7:8,8:7,9:6,10:5,11:4,12:3,13:2,14:1,15:0}
-{0:3,1:7,2:11,3:15,4:2,5:6,6:10,7:14,8:1,9:5,10:9,11:13,12:0,13:4,14:8,15:12}
-{0:12,1:13,2:14,3:15,4:8,5:9,6:10,7:11,8:4,9:5,10:6,11:7,12:0,13:1,14:2,15:3}
-{0:3,1:2,2:1,3:0,4:7,5:6,6:5,7:4,8:11,9:10,10:9,11:8,12:15,13:14,14:13,15:12}
-{0:15,1:11,2:7,3:3,4:14,5:10,6:6,7:2,8:13,9:9,10:5,11:1,12:12,13:8,14:4,15:0}
-{0:0,1:4,2:8,3:12,4:1,5:5,6:9,7:13,8:2,9:6,10:10,11:14,12:3,13:7,14:11,15:15}
-
-
-
-
+        
 
 #game = Game()
 #game.play()
 
 
+game = Game()
+a = game.note
+game.turn()
+b = game.note
+game.turn()
+c = game.note
+game.turn()
+d = game.note
+game.turn()
+e = game.note
 
+print("-----")
+print(a)
+print(b)
+print(c)
+print(d)
+print(e)
+print("-----")
+
+aa = filename_encode(a)
+bb = filename_encode(b)
+cc = filename_encode(c)
+dd = filename_encode(d)
+ee = filename_encode(e)
+
+print(aa)
+print(bb)
+print(cc)
+print(dd)
+print(ee)
+print("-----")
+
+aaa = filename_decode(aa)
+bbb = filename_decode(bb)
+ccc = filename_decode(cc)
+ddd = filename_decode(dd)
+eee = filename_decode(ee)
+
+print(aaa)
+print(bbb)
+print(ccc)
+print(ddd)
+print(eee)
+print("-----")
+
+
+print(filename_decode("===="))
