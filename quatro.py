@@ -10,6 +10,10 @@ class Board:
     def __init__(self):
         # array representing the 16 tiles
         self.board=[None]*16
+        # the selected piece
+        self.selection=None
+        # the current player
+        self.white=True
         # all possible ways to have pieces in a row
         self.paths=[[0,1,2,3],[4,5,6,7],[8,9,10,11],[12,13,14,15],[0,4,8,12],
                 [1,5,9,13],[2,6,10,14],[3,7,11,15],[0,5,10,15],[3,6,9,12]]
@@ -34,24 +38,30 @@ class Board:
             (0,1,2,3),(0,1,3,2),(0,2,1,3),(0,2,3,1),(0,3,1,2),(0,3,2,1),(1,0,2,3),(1,0,3,2),
             (1,2,0,3),(1,2,3,0),(1,3,0,2),(1,3,2,0),(2,0,1,3),(2,0,3,1),(2,1,0,3),(2,1,3,0),
             (2,3,0,1),(2,3,1,0),(3,0,1,2),(3,0,2,1),(3,1,0,2),(3,1,2,0),(3,2,0,1),(3,2,1,0)]
-        
+    
+    def are_equivalent(self, other):
+        return False
 
-    # place a piece, throws exception if invalid
-    def place(self, piece, square):
-        if(self.check_piece(piece) and self.check_square(square)):
-            self.board[square]=piece
+    def from_notation(self, note):
+        return False
+
+    # place the selected piece, throws exception if invalid
+    def place(self, square):
+        if(self.check_square(square)):
+            self.board[square]=self.selection
+            self.selection = None
         else:
-            raise Exception("piece already in use")
-        #if(self.board[square]!=None):
-        #    raise Exception("square is already occupied")
-        #if(piece<0 or piece>15):
-        #    raise Exception("invalid piece")
-        #if(square<0 or square>15):
-        #    raise Exception("invalid square")
-        #for i in range(16):
-        #    if(piece==self.board[i]):
-        #        raise Exception("piece already in use")
-        #self.board[square]=piece
+            raise Exception("illegal sqaure")
+
+    # select a piece, change player's turn
+    def select(self, piece):
+        if(not self.selection is None):
+            raise Exception("must place piece")
+        if(self.check_piece(piece)):
+            self.selection=piece
+            self.white = not self.white
+        else:
+            raise Exception("illegal selection")
 
     # return true if piece has not yet been placed
     def check_piece(self, piece):
@@ -87,13 +97,6 @@ class Board:
                 dd = d&x
                 if(aa==bb and aa==cc and aa==dd):
                     flag=True
-                    #y=0
-                    #if(aa!=0):
-                    #    y=1
-                    #print("the pieces are:", [a,b,c,d])
-                    #print("the squares are:", path)
-                    #attribute=self.attribute_map[(x,y)]
-                    #print("the attribute is:", attribute)
         return flag
 
     # pretty print the board to the console
@@ -115,28 +118,41 @@ class Game:
     def __init__(self):
         # notation
         self.note=""
-        # true if white has the move, false otherwise
-        self.white=True
-        # true if the player is selecting, false if placing
-        self.select=True
-        # the piece that the opposing player has selected for the current player
-        self.selection=None
         # the board
         self.board=Board()
 
-    def select_piece(self):
+
+    def from_notation(self, note):
+        self.note=note
+        self.board=self.board.from_notation(note)
+
+    def select_piece_interactive(self):
                     piece=int(input("select piece:\t"))
                     while(not self.board.check_piece(piece)):
                         piece=int(input("illegal selction\nselect piece:\t"))
-                    self.selection=piece
+                    self.board.select(piece)
                     self.append_notation(piece)
     
-    def select_square(self):
+    def select_square_interactive(self):
                     square=int(input("select square:\t"))
                     while(not self.board.check_square(square)):
                         square=int(input("illegal selction\nselect square:\t"))
-                    self.board.place(self.selection, square)
+                    self.board.place(square)
                     self.append_notation(square)
+    
+    #def select_piece(self, piece):
+    #                if(self.board.check_piece(piece)):
+    #                    self.board.select(piece)
+    #                self.append_notation(piece)
+    #                    return
+    #                self.append_notation(piece)
+    
+    #def select_square_interactive(self):
+    #                square=int(input("select square:\t"))
+    #                while(not self.board.check_square(square)):
+    #                    square=int(input("illegal selction\nselect square:\t"))
+    #                self.board.place(square)
+    #                self.append_notation(square)
 
     def play(self):
         self.board.print()
@@ -173,43 +189,45 @@ class Game:
                     self.select=not self.select
 
 
-    def turn(self):
-        #self.board.print()
-        if(self.white):
-            if(self.select):
-                self.board.print()
-                self.select_piece()
-                self.select=not self.select
-                self.white=not self.white
-            else:
-                # white place piece
-                self.select_square()
-                #self.board.print()
-                if(self.board.check()):
-                    self.board.print()
-                    print("win for white")
-                self.select=not self.select
+    def turn(self, square, piece):
+        move = self.note
+        if(not self.note==""):
+            #logic for placing piece here
+            return None
+        # logic for selecting piece here
+        if(self.board.check_piece(piece)):
+            return move + "{:x}".format(piece)
         else:
-            print("black has the move")
-            if(self.select):
-                # black select piece
-                self.board.print()
-                self.select_piece()
-                self.select=not self.select
-                self.white=not self.white
-            else:
-                # black place piece
-                self.select_square()
-                self.board.print()
-                if(self.board.check()):
-                    self.board.print()
-                    print("win for black")
-                self.select=not self.select
+            return None
 
-    def append_notation(self, x):
-        self.note = self.note + "{:x}".format(x)
+
+
+
+
+
+
+
+    
+def generate(stage):
+    if(stage==0):
+        root = Game()
+        path = "database/" "{:02d}".format(stage) + "/" + filename_encode(root.note) + ".txt"
+        print("opening path " + path)
+        f = open(path, "w")
+        f.write("u")
+        for i in range(16):
+            node = root.turn(None, i)
+            if(not node is None):
+                print(i)
+                print(node)
+                print(filename_encode(node))
+                print()
+                f.write("\n" + filename_encode(node)+ "\nu")
+        f.close()
 
 def filename_encode(x):
+    if(x==""):
+        return "===="
     flag=False
     if(len(x)%2==1):
         flag=True
@@ -231,51 +249,6 @@ def filename_decode(x):
 #game = Game()
 #game.play()
 
+generate(0)
+#print(filename_decode(filename_encode("")))
 
-game = Game()
-a = game.note
-game.turn()
-b = game.note
-game.turn()
-c = game.note
-game.turn()
-d = game.note
-game.turn()
-e = game.note
-
-print("-----")
-print(a)
-print(b)
-print(c)
-print(d)
-print(e)
-print("-----")
-
-aa = filename_encode(a)
-bb = filename_encode(b)
-cc = filename_encode(c)
-dd = filename_encode(d)
-ee = filename_encode(e)
-
-print(aa)
-print(bb)
-print(cc)
-print(dd)
-print(ee)
-print("-----")
-
-aaa = filename_decode(aa)
-bbb = filename_decode(bb)
-ccc = filename_decode(cc)
-ddd = filename_decode(dd)
-eee = filename_decode(ee)
-
-print(aaa)
-print(bbb)
-print(ccc)
-print(ddd)
-print(eee)
-print("-----")
-
-
-print(filename_decode("===="))
