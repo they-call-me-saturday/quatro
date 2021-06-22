@@ -7,7 +7,7 @@ class Node:
         self.board=board
         self.exploration_code=exploration_code
         self.output_class = output_class
-    
+
     def encode(self):
         ret = bitarray()
         ret.extend(self.board)
@@ -193,9 +193,27 @@ class Board:
         return False
 
     def is_equivalent_position(self, other):
+        for permutation in self.board_permutations:
+            l1=[None]*16
+            for i in range(16):
+                l1[permutation[i]]=self.board[i]
+            #print(l1)
+            flag=True
+            for i in range(16):
+                if(not l1[i]==other.board[i]):
+                    flag=False
+                    break
+            if(flag):
+                return True
         return False
 
+
+
+
     def is_equivalent_attribute(self, other):
+        #print("comparing the following two boards")
+        #self.print()
+        #other.print()
         l1=[]
         l2=[]
         if(not self.selection is None):
@@ -204,20 +222,36 @@ class Board:
             l2.append(other.selection)
         for i in range(16):
             if(not self.board[i] is None):
-                l1.add(self.board[i])
+                l1.append(self.board[i])
             if(not other.board[i] is None):
-                l2.add(other.board[i])
+                l2.append(other.board[i])
+        #print(l1)
+        #print(l2)
         for a in self.attribute_permutations:
             for b in range(16):
                 flag=True
                 for c in range(len(l1)):
+                    #print(a,b)
                     number=l1[c]
                     number=number^b
-                    zero=number&(pow(2,a[0]))
-                    one=number&(pow(2,a[1]))
-                    two=number&(pow(2,a[2]))
-                    three=number&(pow(2,a[3]))
-                    number=zero*pow(2,0)+one*pow(2,1)+two*pow(2,2)+three*pow(2,3)
+                    zero=number&(pow(2,a[0]))>0
+                    one=number&(pow(2,a[1]))>0
+                    two=number&(pow(2,a[2]))>0
+                    three=number&(pow(2,a[3]))>0
+                    d=0
+                    if(zero):
+                        d+=1
+                    if(one):
+                        d+=2
+                    if(two):
+                        d+=4
+                    if(three):
+                        d+=8
+                    #print(zero,one,two,three)
+                    number=d
+                    #print(l1[c],"-->",number)
+                    #print(number==l2[c])
+                    #input()
                     if(not number==l2[c]):
                         flag=False
                         break
@@ -249,48 +283,104 @@ def explore(iteration):
             if(flag):
                 next_queue.append(move)
                 transitions.append(move)
-        
-        
         node=Node(current.to_bitarray(),encode_other(0),encode_other(0))
         node_path="database/" + "{:02d}".format(iteration) + "/" + filename_encode(node.board.tobytes())
         queue_path="database/" + "{:02d}".format(iteration) + "_queue"
-
         node_file=open(node_path,"wb")
         queue_file=open(queue_path,"wb")
-        
         node.encode().tofile(node_file)
-
         for transition in transitions:
             x=Node(transition.to_bitarray(),encode_other(0),encode_other(0))
             xx=x.encode()
             xx.tofile(node_file)
             xx.tofile(queue_file)
-
         node_file.close()
         queue_file.close()
 
+    if(iteration is 1):
+        
+        # list of nodes currently in queue
+        queue_prev=[]
+        
+        # read queue of nodes from file
+        queue_prev_path = "database/" + "{:02d}".format(iteration-1) + "_queue"
+        queue_prev_file=open(queue_prev_path, "rb")
+        while(True):
+            x=queue_prev_file.read(12)
+            if(x==b''):
+                break
+            y=bitarray()
+            y.frombytes(x)
+            z=Node(y[0:88],y[88:92],y[92:96])
+            queue_prev.append(z)
+        queue_prev_file.close()
 
-
-
-        #print(node_path)
-
-
-
-def write_file(x, path):
-    f = open(path, "wb")
-    x.tofile(f)
-    f.close()
-
-def read_file(path):
-    f = open(path, "rb")
-    ret = bitarray()
-    ret.fromfile(f)
-    f.close()
-    return ret
-
-
-
+        
+        # list of nodes added to next queue
+        queue_next=[]
+        
+        for node in queue_prev:
             
+            # will contain all transitions from this node
+            transitions=[]
+            
+            current=Board()
+            current.from_bitarray(node.board)
+            moves=[]
+            for i in range(16):
+                if(current.check_square(i)):
+                    move=current.place(i)
+                    flag=True
+                    for other in moves:
+                        if(move.is_equivalent_position(other)):
+                            flag=False
+                            break
+                    if(flag):
+                        moves.append(move)
+                    
+            for board in moves:
+                moves_ii=[]
+                for i in range(16):
+                    if(board.check_piece(i)):
+                        move=board.select(i)
+                        flag=True
+                        for other in moves_ii:
+                            if(move.is_equivalent_attribute(other)):
+                                flag=False
+                                break
+                        if(flag):
+                            moves_ii.append(move)
+                            x=Node(move.to_bitarray(),encode_other(0),encode_other(0))
+                            transitions.append(x)
+                            queue_next.append(x)
+            
+            node=Node(current.to_bitarray(),encode_other(0),encode_other(0))
+            node_path="database/" + "{:02d}".format(iteration) + "/" + filename_encode(node.board.tobytes())
+            
+
+            node_file=open(node_path,"wb")
+
+            node.encode().tofile(node_file)
+            for transition in transitions:
+                xx=x.encode()
+                xx.tofile(node_file)
+            node_file.close()
+            #queue_file.close()
+
+        
+        queue_next_path = "database/" + "{:02d}".format(iteration) + "_queue"
+        queue_next_file=open(queue_next_path,"wb")
+        for node in queue_next:
+            xx = node.encode()
+            xx.tofile(queue_next_file)
+        queue_next_file.close()
+
+
+
+
+
+
+
 def filename_encode(x):
     urlbytes = base64.urlsafe_b64encode(x)
     urlstring = str(urlbytes, "utf-8")
@@ -303,7 +393,8 @@ def filename_decode(x):
 
 
 
-explore(0)
+#explore(0)
+explore(1)
 
 #x=Board()
 #y=x.select(0)
