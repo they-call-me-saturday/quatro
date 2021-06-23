@@ -40,18 +40,27 @@ def encode_other(x):
 def decode_other(x):
     return x.decode({0:bitarray("00"),1:bitarray("01"),2:bitarray("10"),3:bitarray("11")},[0])
 
-def write_file(x, path):
-    f = open(path, "wb")
-    x.tofile(f)
-    f.close()
+#def write_file(x, path):
+#    f = open(path, "wb")
+#    x.tofile(f)
+#    f.close()
 
-def read_file(path):
-    f = open(path, "rb")
-    ret = bitarray()
-    ret.fromfile(f)
-    f.close()
+#def read_file(path):
+#    f = open(path, "rb")
+#    ret = bitarray()
+#    ret.fromfile(f)
+#    f.close()
+#    return ret
+
+def filename_encode(x):
+    urlbytes = base64.urlsafe_b64encode(x)
+    urlstring = str(urlbytes, "utf-8")
+    return urlstring
+
+def filename_decode(x):
+    urlbytes = bytes(x, "utf-8")
+    ret = base64.urlsafe_b64decode(urlbytes)
     return ret
-
 
 # contains the logic for the game of quatro
 class Board:
@@ -190,14 +199,84 @@ class Board:
 
 
     def is_equivalent(self, other):
+        for permutation in self.board_permutations:
+            l1=[None]*16
+            for i in range(16):
+                l1[permutation[i]]=self.board[i]
+            
+            l2=[]
+            l3=[]
+            flag=False
+            for i in range(16):
+                if(l1[i] is None):
+                    if(not other.board[i] is None):
+                        flag=True
+                        break
+                else:
+                    if(other.board[i] is None):
+                        flag=True
+                        break
+                    else:
+                       l2.append(l1[i])
+                       l3.append(other.board[i])
+            
+            #y=Board()
+            #y.board=l1
+            #y.print()
+            if(flag):
+                #print("does not match")
+                continue
+            #else:
+                #print("does match")
+            #input()
+            
+            if(not self.selection is None):
+                l2.append(self.selection)
+            if(not other.selection is None):
+                l3.append(other.selection)
+            
+            for a in self.attribute_permutations:
+                for b in range(16):
+                    flag=True
+                    for c in range(len(l2)):
+                        number=l2[c]
+                        number=number^b
+                        zero=number&(pow(2,a[0]))>0
+                        one=number&(pow(2,a[1]))>0
+                        two=number&(pow(2,a[2]))>0
+                        three=number&(pow(2,a[3]))>0
+                        d=0
+                        if(zero):
+                            d+=1
+                        if(one):
+                            d+=2
+                        if(two):
+                            d+=4
+                        if(three):
+                            d+=8
+                        number=d
+                        if(not number==l3[c]):
+                            flag=False
+                            break
+                    if(flag):
+                        return True
         return False
+
+            
+
+
+
+
+
+
+
+
 
     def is_equivalent_position(self, other):
         for permutation in self.board_permutations:
             l1=[None]*16
             for i in range(16):
                 l1[permutation[i]]=self.board[i]
-            #print(l1)
             flag=True
             for i in range(16):
                 if(not l1[i]==other.board[i]):
@@ -211,9 +290,6 @@ class Board:
 
 
     def is_equivalent_attribute(self, other):
-        #print("comparing the following two boards")
-        #self.print()
-        #other.print()
         l1=[]
         l2=[]
         if(not self.selection is None):
@@ -225,8 +301,6 @@ class Board:
                 l1.append(self.board[i])
             if(not other.board[i] is None):
                 l2.append(other.board[i])
-        #print(l1)
-        #print(l2)
         for a in self.attribute_permutations:
             for b in range(16):
                 flag=True
@@ -247,11 +321,7 @@ class Board:
                         d+=4
                     if(three):
                         d+=8
-                    #print(zero,one,two,three)
                     number=d
-                    #print(l1[c],"-->",number)
-                    #print(number==l2[c])
-                    #input()
                     if(not number==l2[c]):
                         flag=False
                         break
@@ -354,7 +424,7 @@ def explore(iteration):
                             transitions.append(x)
                             queue_next.append(x)
             
-            node=Node(current.to_bitarray(),encode_other(0),encode_other(0))
+            #node=Node(current.to_bitarray(),encode_other(0),encode_other(0))
             node_path="database/" + "{:02d}".format(iteration) + "/" + filename_encode(node.board.tobytes())
             
 
@@ -365,7 +435,6 @@ def explore(iteration):
                 xx=x.encode()
                 xx.tofile(node_file)
             node_file.close()
-            #queue_file.close()
 
         
         queue_next_path = "database/" + "{:02d}".format(iteration) + "_queue"
@@ -376,87 +445,115 @@ def explore(iteration):
         queue_next_file.close()
 
 
+    if(iteration is 2):
+        
+        # list of nodes currently in queue
+        queue_prev=[]
+        
+        # read queue of nodes from file
+        queue_prev_path = "database/" + "{:02d}".format(iteration-1) + "_queue"
+        queue_prev_file=open(queue_prev_path, "rb")
+        while(True):
+            x=queue_prev_file.read(12)
+            if(x==b''):
+                break
+            y=bitarray()
+            y.frombytes(x)
+            z=Node(y[0:88],y[88:92],y[92:96])
+
+            #yeah=Board()
+            #yeah.from_bitarray(z.board)
+            #yeah.print()
+            queue_prev.append(z)
+        queue_prev_file.close()
+        #input()
+
+
+        
+        # list of nodes added to next queue
+        queue_next=[]
+        #count=0 
+        for node in queue_prev:
+            
+            # will contain all transitions from this node
+            transitions=[]
+            
+            current=Board()
+            current.from_bitarray(node.board)
+            
+            moves=[]
+            for i in range(16):
+                if(current.check_square(i)):
+                    move=current.place(i)
+                    flag=True
+                    for other in moves:
+                        if(move.is_equivalent_position(other)):
+                            flag=False
+                            break
+                    if(flag):
+                        moves.append(move)
+                    
+            for board in moves:
+                moves_ii=[]
+                for i in range(16):
+                    if(board.check_piece(i)):
+                        move=board.select(i)
+                        flag=True
+                        for other in moves_ii:
+                            if(move.is_equivalent_attribute(other)):
+                                flag=False
+                                break
+                        if(flag):
+                            moves_ii.append(move)
+                            x=Node(move.to_bitarray(),encode_other(0),encode_other(0))
+                            #transitions.append(x)
+                            equiv=None
+                            for other in queue_next:
+                                other_board = Board()
+                                other_board.from_bitarray(other.board)
+                                if(move.is_equivalent(other_board)):
+                                    equiv=other
+                                    break
+                            if(equiv is None):
+                                transitions.append(x)
+                                queue_next.append(x)
+                            else:
+                                transitions.append(equiv)
+            
+            node_path="database/" + "{:02d}".format(iteration) + "/" + filename_encode(node.board.tobytes())
+            
+
+            node_file=open(node_path,"wb")
+
+            node.encode().tofile(node_file)
+            for transition in transitions:
+                xx=x.encode()
+                xx.tofile(node_file)
+            node_file.close()
+
+        
+        queue_next_path = "database/" + "{:02d}".format(iteration) + "_queue"
+        queue_next_file=open(queue_next_path,"wb")
+        for node in queue_next:
+            yeah=Board()
+            yeah.from_bitarray(node.board)
+            yeah.print()
+            xx = node.encode()
+            xx.tofile(queue_next_file)
+        queue_next_file.close()
+        #print(len(queue_next))
 
 
 
 
-
-def filename_encode(x):
-    urlbytes = base64.urlsafe_b64encode(x)
-    urlstring = str(urlbytes, "utf-8")
-    return urlstring
-
-def filename_decode(x):
-    urlbytes = bytes(x, "utf-8")
-    ret = base64.urlsafe_b64decode(urlbytes)
-    return ret
 
 
 
 #explore(0)
-explore(1)
-
-#x=Board()
-#y=x.select(0)
-#z=x.select(1)
-#print(z.is_equivalent_attribute(y))
+#explore(1)
+explore(2)
 
 
-
-
-
-
-
-
-
-
-
-
-#board=zeros(88)
-#board[0:3]=1
-#exploration_code=zeros(4)
-#output_class=zeros(4)
-#node = Node(board, exploration_code, output_class)
-
-#_board = Board()
-#_board.from_bitarray(board)
-#_board.print()
-#_board=_board.select(5)
-#1_board.print()
-#_board=_board.place(10)
-#_board.print()
-#x=_board.to_bitarray()
-#print(x)
-
-#x=node.encode()
-#write_file(x, "yeah")
-#y=read_file("yeah")
-
-#board = Board()
-#x = board.to_bitarray()
-#print(x)
-#board=board.select(0)
-#y = board.to_bitarray()
-#print(x)
-
-
-#f = open("saturday", "wb")
-#x.tofile(f)
-#y.tofile(f)
-#f.close()
-#
-#ff = open("they", "wb")
-#x.tofile(ff)
-#ff.close()
-
-
-
-
-
-
-
-
-
-
-
-
+x = Board()
+x = x.select(0)
+x = x.place(0)
